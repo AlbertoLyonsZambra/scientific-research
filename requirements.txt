@@ -1,0 +1,6 @@
+beautifulsoup4
+pandas
+python-dotenv
+selenium
+SQLAlchemy
+mysql-connector-python
