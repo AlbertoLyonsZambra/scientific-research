@@ -1,129 +1,147 @@
-from selenium import webdriver
-import pandas as pd
-from bs4 import BeautifulSoup
-import os
-from pathlib import Path
 import time
+import re
+import pandas as pd
+from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.edge.service import Service
+from bs4 import BeautifulSoup
+from datetime import datetime
 
-options = webdriver.EdgeOptions()
+def get_info(
+    start_date={"yr": "2023", "mo": "1", "day": "1"},
+    end_date={"oyr": "2023", "omo": "12", "oday": "31"},
+    latitudes={"llat": "-90", "ulat": "90"},
+    longitudes={"llon": "-180", "ulon": "180"},
+    link="https://www.globalcmt.org/CMTsearch.html"
+):
+    options = webdriver.EdgeOptions()
+    options.add_argument('--headless')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-gpu')
+    options.add_argument('--disable-dev-shm-usage')
+    options.add_argument('--ignore-certificate-errors')
+    options.add_argument('--log-level=3')
 
-#options.add_argument('--headless')
-options.add_argument('--no-sandbox')
-options.add_argument('--disable-gpu')
-options.add_argument('--disable-dev-shm-usage')
-options.add_argument('--ignore-certificate-errors')
-options.add_argument('--ignore-ssl-errors')
-options.add_argument('--log-level=3')
-options.add_argument('--enable-chrome-browser-cloud-management')
-
-driver = webdriver.Edge(options=options)
-
-def get_info(link):
+    driver = webdriver.Edge(options=options)
+    
+    print(f"Abriendo Global CMT: {link}")
     driver.get(link)
     wait = WebDriverWait(driver, 60)
 
-    page_source = driver.page_source
-    soup = BeautifulSoup(page_source, 'html.parser')
-    """date range"""
+    # Establecer la fecha en modo año-mes-día
+    date_button = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "input[name='otype'][value='ymd']")))
+    date_button.click()
 
-    starting_year_field = wait.until(
-            EC.presence_of_element_located((By.NAME, "yr"))
-        )
-    starting_month_field = wait.until(
-            EC.presence_of_element_located((By.NAME, "mo"))
-        )
-    starting_day_field = wait.until(
-            EC.presence_of_element_located((By.NAME, "day"))
-        )
-    ending_year_field = wait.until(
-            EC.presence_of_element_located((By.NAME, "oyr"))
-        )
-    ending_month_field = wait.until(
-            EC.presence_of_element_located((By.NAME, "omo"))
-        )
-    ending_day_field = wait.until(
-            EC.presence_of_element_located((By.NAME, "oday"))
-        )
-    """
-    Latitude and longitude range
-    """
-    starting_latitude_field = wait.until(
-            EC.presence_of_element_located((By.NAME, "llat"))
-        )
-    ending_latitude_field = wait.until(
-            EC.presence_of_element_located((By.NAME, "ulat"))
-        )
-    starting_longitude_field = wait.until(
-            EC.presence_of_element_located((By.NAME, "llon"))
-        )
-    ending_longitude_field = wait.until(
-            EC.presence_of_element_located((By.NAME, "ulon"))
-        )
-    """
-    Submit (Done button)
-    """
-    submit_button = wait.until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "input[type='submit'][value='Done']"))
-        )
+    # Combinar todos los parámetros
+    form_data = {**start_date, **end_date, **latitudes, **longitudes}
 
-    starting_year_field.clear()
-    starting_month_field.clear()
-    starting_day_field.clear()
-    ending_year_field.clear()
-    ending_month_field.clear()
-    ending_day_field.clear()
+    print("Rellenando formulario...")
+    for field_name, value in form_data.items():
+        try:
+            field = wait.until(EC.presence_of_element_located((By.NAME, field_name)))
+            field.clear()
+            field.send_keys(str(value))
+        except Exception as e:
+            print(f"No se pudo rellenar el campo {field_name}: {e}")
 
-    starting_latitude_field.clear()
-    ending_latitude_field.clear()
-    starting_longitude_field.clear()
-    ending_longitude_field.clear()
-
-    year_ending_date_button = driver.find_element(By.CSS_SELECTOR, "input[name='otype'][value='ymd']")
-    year_ending_date_button.click()
-    
-    starting_year = input("Ingrese el año de inicio (numérico): ")
-    starting_month = input("Ingrese el mes de inicio (numérico): ")
-    starting_day = input("Ingrese el día de inicio (numérico): ")
-    ending_year = input("Ingrese el año de fin (numérico): ")
-    ending_month = input("Ingrese el mes de fin (numérico): ")
-    ending_day = input("Ingrese el día de fin (numérico): ")
-
-    starting_year_field.send_keys(starting_year)
-    starting_month_field.send_keys(starting_month)
-    starting_day_field.send_keys(starting_day)
-    ending_year_field.send_keys(ending_year)
-    ending_month_field.send_keys(ending_month)
-    ending_day_field.send_keys(ending_day)
-
-    starting_latitude = input("Ingrese una latitud de inicio (Entre -90 y 90): ")
-    ending_latitude = input("Ingrese una latitud de fin (Entre -90 y 90): ")
-    starting_longitude = input("Ingrese una longitud de inicio (Entre -180 y 180): ")
-    ending_longitude = input("Ingrese una longitud de fin (Entre -180 y 180): ")
-
-    starting_latitude_field.send_keys(starting_latitude)
-    ending_latitude_field.send_keys(ending_latitude)
-    starting_longitude_field.send_keys(starting_longitude)
-    ending_longitude_field.send_keys(ending_longitude)
-
+    # Enviar formulario
+    submit_button = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "input[type='submit'][value='Done']")))
     submit_button.click()
-    time.sleep(10) # Debug Only
 
-    """
-    Next page after submit the info
-    """
-    wait = WebDriverWait(driver, 60)
-    """
-    articles = soup.find('article', 'card card--featured')
-    for article in articles:
-        img = article.find('img')
-        return img
-    """
+    # Esperar resultados
+    time.sleep(5)
+    page_source = driver.page_source
+    driver.quit()
+
+    print("Analizando HTML de resultados...")
+    soup = BeautifulSoup(page_source, 'html.parser')
     
-def main(link="https://www.globalcmt.org/CMTsearch.html"):
-    result = get_info(link)
-    print(result)
-main()
+    # Extraer eventos
+    events = []
+    
+    # Encontramos los bloques <hr>. Luego buscamos los <b> (EventID) y <pre> (Datos)
+    b_tags = soup.find_all('b')
+    pre_tags = soup.find_all('pre')
+    
+    # El primer <pre> a veces es el search criteria, así que podemos ignorarlo si no contiene "Date:"
+    data_pres = [p for p in pre_tags if "Centroid Time:" in p.get_text()]
+    
+    # Los tags <b> al principio tienen el Event ID
+    # Filtrar solo los <b> que se ven como "202302060128A "
+    event_ids = []
+    locations = []
+    for b in b_tags:
+        text = b.get_text().strip()
+        if re.match(r'^\d{11,14}[A-Z\s]*$', text):
+            event_ids.append(text)
+            # Find location by looking right after the </b> tag
+            loc_text = b.next_sibling
+            if isinstance(loc_text, str):
+                locations.append(loc_text.strip())
+            else:
+                locations.append("UNKNOWN")
+
+    # Hacer el match entre identificadores y bloques pre (deben tener la misma longitud si la página es normal)
+    min_len = min(len(event_ids), len(data_pres))
+    
+    for i in range(min_len):
+        event_id = event_ids[i].strip()
+        loc = locations[i].strip()
+        pre_text = data_pres[i].get_text()
+        
+        # Parsed fields
+        # Date: 2023/ 2/ 6   Centroid Time:  1:28:22.2 GMT
+        date_match = re.search(r'Date:\s+(\d{4}/\s*\d+/\s*\d+)', pre_text)
+        time_match = re.search(r'Centroid Time:\s+([\d\:\.\s]+)\s+GMT', pre_text)
+        lat_match = re.search(r'Lat=\s*([-\d\.]+)', pre_text)
+        lon_match = re.search(r'Lon=\s*([-\d\.]+)', pre_text)
+        depth_match = re.search(r'Depth=\s*([-\d\.]+)', pre_text)
+        mw_match = re.search(r'Mw\s*=\s*([-\d\.]+)', pre_text)
+        mb_match = re.search(r'mb\s*=\s*([-\d\.]+)', pre_text)
+        ms_match = re.search(r'Ms\s*=\s*([-\d\.]+)', pre_text)
+        
+        # Format the date nicely to YYYY-MM-DD
+        date_str = None
+        if date_match:
+            raw_date = date_match.group(1).replace(" ", "")
+            try:
+                date_str = datetime.strptime(raw_date, "%Y/%m/%d").date().strftime("%Y-%m-%d")
+            except:
+                pass
+                
+        time_str = None
+        if time_match:
+            raw_time = time_match.group(1).replace(" ", "")
+            if "." in raw_time:
+                raw_time = raw_time.split(".")[0]
+            try:
+                time_str = ":".join(p.zfill(2) for p in raw_time.split(":"))
+            except Exception:
+                time_str = raw_time
+
+        event = {
+            "event_id": event_id,
+            "location": loc,
+            "date": date_str,
+            "centroid_time": time_str,
+            "latitude": float(lat_match.group(1)) if lat_match else None,
+            "longitude": float(lon_match.group(1)) if lon_match else None,
+            "depth": float(depth_match.group(1)) if depth_match else None,
+            "mw": float(mw_match.group(1)) if mw_match else None,
+            "mb": float(mb_match.group(1)) if mb_match else None,
+            "ms": float(ms_match.group(1)) if ms_match else None
+        }
+        events.append(event)
+
+    df = pd.DataFrame(events)
+    return df
+
+if __name__ == "__main__":
+    # Test block
+    df = get_info(
+        start_date={"yr": "2023", "mo": "02", "day": "06"},
+        end_date={"oyr": "2023", "omo": "02", "oday": "07"}
+    )
+    print("Datos extraídos exitosamente:")
+    print(df)
