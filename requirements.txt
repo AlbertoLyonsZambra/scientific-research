@@ -5,3 +5,4 @@ selenium
 SQLAlchemy
 mysql-connector-python
 psycopg2
+lxml
