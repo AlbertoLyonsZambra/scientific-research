@@ -11,8 +11,8 @@ from datetime import datetime
 def get_info(
     start_date={"yr": "2023", "mo": "1", "day": "1"},
     end_date={"oyr": "2023", "omo": "12", "oday": "31"},
-    latitudes={"llat": "-90", "ulat": "90"},
-    longitudes={"llon": "-180", "ulon": "180"},
+    latitudes={"llat": "32", "ulat": "42"},
+    longitudes={"llon": "-124", "ulon": "-114"},
     link="https://www.globalcmt.org/CMTsearch.html"
 ):
     options = webdriver.EdgeOptions()
