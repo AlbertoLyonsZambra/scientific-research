@@ -4,3 +4,4 @@ python-dotenv
 selenium
 SQLAlchemy
 mysql-connector-python
+psycopg2
