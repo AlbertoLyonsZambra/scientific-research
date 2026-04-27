@@ -71,7 +71,6 @@ def get_info(
     for event in data:
         # PublicID
         id = event.get("publicID").split('=')[1]
-        print("Terremoto con id: ", id)
         # Date
         origin = event.origin
         date = origin.time.value.text
@@ -102,7 +101,6 @@ def get_info(
             "mw_mag": mw_mag
         }
         events.append(event)
-        print("Evento resultante: ", event)
     # Final
     df = pd.DataFrame(events)
     return df

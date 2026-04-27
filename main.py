@@ -1,11 +1,13 @@
 import os
 import warnings
+import argparse
 # Suprimir warnings si los hay de las conexiones
 warnings.filterwarnings('ignore')
 
 from database import engine, Base
 from models import Earthquake
 from scrapping import CMT_Scrapping
+import pandas as pd
 from scrapping import ISC_Scrapping
 from dotenv import load_dotenv
 
@@ -14,6 +16,9 @@ def initialize_database():
     Base.metadata.create_all(bind=engine)
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Script para extraer datos de terremotos y guardarlos en una base de datos.")
+    parser.add_argument("--page", help="Página para realizar la consulta (valores: cmt, isc)", default="cmt", choices=["cmt", "isc"])
+    args = parser.parse_args()
     # Cargar variables de entorno
     load_dotenv()
     CMT_SCRAPING_URL = os.getenv("CMT_SCRAPING_URL", "https://www.globalcmt.org/CMTsearch.html")
@@ -22,7 +27,8 @@ if __name__ == "__main__":
     initialize_database()
 
     # 2. Preguntar al usuario las fechas y la zona que desea investigar
-    print("\n--- BÚSQUEDA DE SISMOS (GLOBAL CMT) ---")
+    print("\n--- BÚSQUEDA DE SISMOS ---")
+    print(f"\n--- PÁGINA {args.page.upper()} ---")
     start_year = input("Ingresa el AÑO de inicio (ej. 2023): ").strip()
     ending_year = input("Ingresa el AÑO de fin (ej. 2024): ").strip()
     
@@ -31,6 +37,18 @@ if __name__ == "__main__":
     
     end_month = input("Mes de fin (ej. 2): ").strip()
     end_day = input("Día de fin (ej. 7): ").strip()
+    start_time, end_time = "", ""
+    if args.page.lower() == "isc":
+        print("\n--- FILTRO DE HORA EN FORMATO 24H (Opcional - Presiona Enter para 00:00:00 y 23:59:59) ---")
+        start_hour = input("Hora de inicio (ej. 0): ").strip() or "00"
+        start_minute = input("Minuto de inicio (ej. 0): ").strip() or "00"
+        start_second = input("Segundo de inicio (ej. 0): ").strip() or "00"
+        end_hour = input("Hora de fin (ej. 23): ").strip() or "23"
+        end_minute = input("Minuto de fin (ej. 59): ").strip() or "59"
+        end_second = input("Segundo de fin (ej. 59): ").strip() or "59"
+        start_time = f"{start_hour.zfill(2)}:{start_minute.zfill(2)}:{start_second.zfill(2)}"
+        end_time = f"{end_hour.zfill(2)}:{end_minute.zfill(2)}:{end_second.zfill(2)}"
+    # Opcion en caso de que se seleccione ISC
 
     print("\n--- FILTRO DE ZONA (Opcional - Presiona Enter para Todo el Mundo) ---")
     min_lat = input("Latitud Sur Mínima (ej. -90): ").strip() or "32"
@@ -43,14 +61,23 @@ if __name__ == "__main__":
     # 3. Extraer y guardar
     # En lugar de usar valores estáticos como antes, le pasamos tus nuevos parámetros
     print(f"[{start_year}] Ejecutando consulta de terremotos...")
-    df = CMT_Scrapping.get_info(
-        start_date={"yr": str(start_year), "mo": str(start_month), "day": str(start_day)},
-        end_date={"oyr": str(ending_year), "omo": str(end_month), "oday": str(end_day)},
-        latitudes={"llat": str(min_lat), "ulat": str(max_lat)},
-        longitudes={"llon": str(min_lon), "ulon": str(max_lon)},
-        link=CMT_SCRAPING_URL
-    )
-    
+    df = pd.DataFrame()
+    if args.page.lower() == "cmt":
+        df = CMT_Scrapping.get_info(
+            start_date={"yr": str(start_year), "mo": str(start_month), "day": str(start_day)},
+            end_date={"oyr": str(ending_year), "omo": str(end_month), "oday": str(end_day)},
+            latitudes={"llat": str(min_lat), "ulat": str(max_lat)},
+            longitudes={"llon": str(min_lon), "ulon": str(max_lon)},
+            link=CMT_SCRAPING_URL
+        )
+    elif args.page.lower() == "isc":
+        df = ISC_Scrapping.get_info(
+            start_date={"start_year": str(start_year), "start_month": str(start_month), "start_day": str(start_day), "start_time": start_time},
+            end_date={"end_year": str(ending_year), "end_month": str(end_month), "end_day": str(end_day), "end_time": end_time},
+            latitudes={"bot_lat": str(min_lat), "top_lat": str(max_lat)},
+            longitudes={"left_lon": str(min_lon), "right_lon": str(max_lon)},
+            link=ISC_SCRAPING_URL
+        )
     if df.empty:
         print("No se encontraron registros.")
     else:
@@ -60,7 +87,10 @@ if __name__ == "__main__":
         print("\nGuardando en la base de datos...")
         try:
             # Pandas cuenta con una función excelente para enviar el dataframe directo a la tabla de SQLAlchemy
-            df.to_sql("earthquakes", con=engine, if_exists="append", index=False)
+            if args.page.lower() == "cmt":
+                df.to_sql("cmt_earthquakes", con=engine, if_exists="append", index=False)
+            elif args.page.lower() == "isc":
+                df.to_sql("isc_earthquakes", con=engine, if_exists="append", index=False)
             print(f"Exito: Se guardaron {len(df)} registros mapeados en la base de datos.")
         except Exception as e:
             # Si el error es de clave duplicada (event_id unique constraint), avisamos
