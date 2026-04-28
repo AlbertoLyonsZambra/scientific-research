@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Float, Date, Time
-from database import Base
+from data.database import Base
 
 class Earthquake(Base):
     __tablename__ = "earthquakes"

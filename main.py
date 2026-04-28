@@ -1,11 +1,13 @@
 import os
 import warnings
 import argparse
+
+import sqlalchemy
 # Suprimir warnings si los hay de las conexiones
 warnings.filterwarnings('ignore')
 
-from database import engine, Base
-from models import Earthquake
+from data.database import engine, Base
+from data.models import Earthquake
 from scrapping import CMT_Scrapping
 import pandas as pd
 from scrapping import ISC_Scrapping
@@ -22,7 +24,7 @@ if __name__ == "__main__":
     # Cargar variables de entorno
     load_dotenv()
     CMT_SCRAPING_URL = os.getenv("CMT_SCRAPING_URL", "https://www.globalcmt.org/CMTsearch.html")
-    ISC_SCRAPING_URL = os.getenv("ISC_SCRAPING_URL", "https://www.isc.ac.uk/iscbulletin/search/catalogue/")
+    ISC_SCRAPING_URL = os.getenv("ISC_SCRAPING_URL", "http://www.isc.ac.uk/cgi-bin/web-db-run?request=REVIEWED&out_format=ISF&prime_only=on&include_phases=on&include_headers=on")
     # 1. Crear las tablas SQLite/MySQL si no existen
     initialize_database()
 
@@ -50,11 +52,11 @@ if __name__ == "__main__":
         end_time = f"{end_hour.zfill(2)}:{end_minute.zfill(2)}:{end_second.zfill(2)}"
     # Opcion en caso de que se seleccione ISC
 
-    print("\n--- FILTRO DE ZONA (Opcional - Presiona Enter para Todo el Mundo) ---")
-    min_lat = input("Latitud Sur Mínima (ej. -90): ").strip() or "32"
-    max_lat = input("Latitud Norte Máxima (ej. 90): ").strip() or "42"
-    min_lon = input("Longitud Oeste Mínima (ej. -180): ").strip() or "-124"
-    max_lon = input("Longitud Este Máxima (ej. 180): ").strip() or "-114"
+    print("\n--- FILTRO DE ZONA (Opcional - Presiona Enter para California) ---")
+    min_lat = input("Latitud Sur Mínima (ej. 32): ").strip() or "32"
+    max_lat = input("Latitud Norte Máxima (ej. 42): ").strip() or "42"
+    min_lon = input("Longitud Oeste Mínima (ej. -124): ").strip() or "-124"
+    max_lon = input("Longitud Este Máxima (ej. -114): ").strip() or "-114"
 
     print("-" * 39)
 
@@ -86,12 +88,29 @@ if __name__ == "__main__":
     
         print("\nGuardando en la base de datos...")
         try:
-            # Pandas cuenta con una función excelente para enviar el dataframe directo a la tabla de SQLAlchemy
             if args.page.lower() == "cmt":
                 df.to_sql("cmt_earthquakes", con=engine, if_exists="append", index=False)
+                print(f"Exito: Se guardaron {len(df)} registros en la base de datos.")
+
             elif args.page.lower() == "isc":
-                df.to_sql("isc_earthquakes", con=engine, if_exists="append", index=False)
-            print(f"Exito: Se guardaron {len(df)} registros mapeados en la base de datos.")
+                # Consultar event_ids ya existentes (la tabla puede no existir aún)
+                try:
+                    with engine.connect() as conn:
+                        result = conn.execute(
+                            sqlalchemy.text("SELECT event_id FROM isc_earthquakes")
+                        )
+                        existing_ids = {row[0] for row in result}
+                except Exception:
+                    existing_ids = set()  # tabla vacía o todavía no creada
+
+                df_new = df[~df["event_id"].isin(existing_ids)]
+
+                if df_new.empty:
+                    print("Todos los eventos ya existen en la base de datos. No se insertó nada.")
+                else:
+                    df_new.to_sql("isc_earthquakes", con=engine, if_exists="append", index=False)
+                    print(f"Exito: Se guardaron {len(df_new)} registros nuevos "
+                          f"({len(df) - len(df_new)} duplicados ignorados).")
         except Exception as e:
             # Si el error es de clave duplicada (event_id unique constraint), avisamos
             if "UNIQUE constraint failed" in str(e) or "Duplicate entry" in str(e) or "duplicate key" in str(e):
