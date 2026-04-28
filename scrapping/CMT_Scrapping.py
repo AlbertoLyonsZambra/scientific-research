@@ -7,6 +7,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 from datetime import datetime
+import os
 
 def get_info(
     start_date={"yr": "2023", "mo": "1", "day": "1"},
@@ -135,6 +136,28 @@ def get_info(
         events.append(event)
 
     df = pd.DataFrame(events)
+
+    if not df.empty:
+        # Crear directorios si no existen
+        os.makedirs("CMT_data/excelFiles", exist_ok=True)
+
+        # Construir nombre del archivo base
+        y1, m1, d1 = start_date.get("yr", "????"), str(start_date.get("mo", "??")).zfill(2), str(start_date.get("day", "??")).zfill(2)
+        y2, m2, d2 = end_date.get("oyr", "????"), str(end_date.get("omo", "??")).zfill(2), str(end_date.get("oday", "??")).zfill(2)
+        blat = str(latitudes.get("llat", "?")).replace("-", "S").replace(".", "p")
+        tlat = str(latitudes.get("ulat", "?")).replace("-", "S").replace(".", "p")
+        llon = str(longitudes.get("llon", "?")).replace("-", "W").replace(".", "p")
+        rlon = str(longitudes.get("ulon", "?")).replace("-", "W").replace(".", "p")
+        
+        stem = f"{y1}{m1}{d1}-{y2}{m2}{d2}_lat{blat}to{tlat}_lon{llon}to{rlon}"
+        xlsx_path = os.path.join("CMT_data/excelFiles", stem + ".xlsx")
+        
+        # Convert columns to appropriate types before saving
+        df["date"] = pd.to_datetime(df["date"])
+        
+        df.to_excel(xlsx_path, index=False, sheet_name="CMT_Earthquakes")
+        print(f"[*] Excel de CMT guardado en: {xlsx_path}")
+
     return df
 
 if __name__ == "__main__":
