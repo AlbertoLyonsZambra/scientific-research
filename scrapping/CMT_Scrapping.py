@@ -79,7 +79,10 @@ def get_info(
             # Find location by looking right after the </b> tag
             loc_text = b.next_sibling
             if isinstance(loc_text, str):
-                locations.append(loc_text.strip())
+                # Eliminar caracteres de control ilegales para Excel (ASCII < 32, excepto tab/newline)
+                import re as _re
+                clean = _re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', loc_text.strip())
+                locations.append(clean)
             else:
                 locations.append("UNKNOWN")
 
@@ -154,6 +157,13 @@ def get_info(
         
         # Convert columns to appropriate types before saving
         df["date"] = pd.to_datetime(df["date"])
+        
+        # Limpiar caracteres de control ASCII ilegales (< 32) que Excel no acepta
+        import re as _re
+        for col in df.select_dtypes(include="object").columns:
+            df[col] = df[col].apply(
+                lambda x: _re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', str(x)) if pd.notna(x) else x
+            )
         
         df.to_excel(xlsx_path, index=False, sheet_name="CMT_Earthquakes")
         print(f"[*] Excel de CMT guardado en: {xlsx_path}")
