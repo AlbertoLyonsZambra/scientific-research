@@ -111,7 +111,9 @@ y_obs = data[:, 1]
 file_name_without_extension = os.path.splitext(input_file)[0]
 
 # Define the base directory and dynamically create a subdirectory
-base_dir = r"C:\Users\yamca\OneDrive\Desktop\Yamir\Universidad\Semestre 9\Investigación Científica\Code\Figures"
+
+base_dir = r"C:\Users\Beto\Desktop\Informatica\Investigación científica\scientific-research\figures"
+
 output_dir = os.path.join(base_dir, file_name_without_extension)
 
 # Create the directory if it doesn't exist
