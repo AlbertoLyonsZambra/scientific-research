@@ -33,9 +33,9 @@ class _ProgressBar:
 class _Downloader:
 
     # El constructor recibe los parámetros de consulta y la URL base
-    def __init__(self, params: dict, base_url: str):
+    def __init__(self, params: dict, base_url: str = "http://www.isc.ac.uk/cgi-bin/web-db-run?request=REVIEWED&out_format=CATCSV"):
         self.params = params
-        self.base_url = base_url
+        self.base_url = "http://www.isc.ac.uk/cgi-bin/web-db-run?request=REVIEWED&out_format=CATCSV"
 
     # Construye la URL de consulta
     def build_url(self) -> str:
