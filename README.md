@@ -141,6 +141,23 @@ print(f"Sismos fusionados: {len(df)}")
 
 ---
 
+## 📊 Análisis y Comparación de Magnitudes (Bot)
+
+Existe un bot configurado para comparar las magnitudes `ms`, `mb` y `mw` frente a la magnitud de referencia `mwg`. 
+Este script procesa el archivo `CaliforniaData.csv` y genera automáticamente un gráfico con diagramas de dispersión (con la línea 1:1), además de imprimir estadísticas de sesgo (bias), error absoluto medio (MAE) y raíz del error cuadrático medio (RMSE).
+
+Para ejecutar el bot de comparación:
+
+```powershell
+python compare/bot_comparador_mwg.py
+```
+
+**Resultado:**
+- Salida de estadísticas descriptivas en la terminal.
+- Gráfico comparativo guardado silenciosamente en `compare/comparacion_magnitudes_mwg.png`.
+
+---
+
 ## 🧪 Tests
 
 El proyecto incluye **16 tests** que verifican la lógica del merge sin necesidad de datos reales ni conexión a internet:
