@@ -110,10 +110,7 @@ El scraper de ISC funciona de manera análoga y guarda el resultado en `ISC_data
 Una vez que tienes ambos Excels, ejecuta el script de fusión:
 
 ```powershell
-python merge_datasets.py \
-    --cmt "CMT_data/excelFiles/20230101-20231231_lat32to42_lonW124toW114.xlsx" \
-    --isc "ISC_data/excelFiles/19700101-20240101_lat32to42_lonW124toW114.xlsx" \
-    --out "Merged_Earthquakes.xlsx"
+python merges/merge_datasets.py --cmt "CMT_data/excelFiles/20230206-20230207_lat35to42_lon30to42.xlsx" --isc "ISC_data/excelFiles/20200101-20200331_lat32to42_lonW125toW114.xlsx" --out "Merged_Earthquakes.xlsx"
 ```
 
 O bien, úsalo como módulo desde Python:
